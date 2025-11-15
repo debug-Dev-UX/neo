@@ -1,0 +1,1210 @@
+<!DOCTYPE html>
+<html lang="km" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEO CHAT AI</title>
+    
+    <!-- 1. ផ្ទុក Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. ផ្ទុក Google Fonts (Inter & Kantumruy Pro) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- 3. កំណត់រចនាសម្ព័ន្ធ Tailwind សម្រាប់ Dark Mode -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        'neo-dark': '#0f172a', // slate-900 for background
+                        'neo-sidebar': '#1e293b', // slate-800 for sidebar
+                        'neo-accent': '#06b6d4', // cyan-500 for buttons/highlights
+                        'neo-bubble': '#334155', // slate-700 for AI bubble
+                        'neo-user-bubble': '#06b6d4', // cyan-500 for user bubble
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Kantumruy Pro', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <!-- 4. Custom Styles -->
+    <style>
+        body {
+            font-family: 'Inter', 'Kantumruy Pro', sans-serif;
+        }
+        /* Custom scrollbar */
+        .message-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .message-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .message-list::-webkit-scrollbar-thumb {
+            background-color: rgba(156, 163, 175, 0.5); /* gray-400 opacity 50 */
+            border-radius: 20px;
+        }
+        .sidebar-list::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sidebar-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar-list::-webkit-scrollbar-thumb {
+            background-color: rgba(107, 114, 128, 0.5); /* gray-500 opacity 50 */
+            border-radius: 20px;
+        }
+
+        /* Typing indicator */
+        .typing-indicator span {
+            height: 8px;
+            width: 8px;
+            background-color: #9ca3af; /* gray-400 */
+            border-radius: 50%;
+            display: inline-block;
+            animation: bounce 1.4s infinite both;
+        }
+        .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1.0); }
+        }
+        
+        /* Message bubble for model (AI) */
+        /* Ensuring Markdown content visibility */
+        .markdown-content p { margin-bottom: 0.5rem; }
+        .markdown-content ul, .markdown-content ol { margin-left: 1.5rem; margin-bottom: 0.5rem; list-style: revert; }
+        .markdown-content code { background-color: rgba(0,0,0,0.1); padding: 0.25rem 0.5rem; border-radius: 0.25rem; font-family: 'Courier New', Courier, monospace; }
+        .dark .markdown-content code { background-color: rgba(255,255,255,0.1); }
+        .markdown-content pre { background-color: #1f2937; color: #f9fafb; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1rem; }
+        .dark .markdown-content pre { background-color: #374151; }
+
+        /* Image preview */
+        #image-preview-container {
+            position: relative;
+            display: none; /* Hidden by default */
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            background-color: rgba(243, 244, 246, 0.5); /* gray-100 opacity 50 */
+            border-radius: 0.5rem;
+        }
+        .dark #image-preview-container {
+            background-color: rgba(55, 65, 81, 0.5); /* gray-700 opacity 50 */
+        }
+        #image-preview {
+            max-height: 100px;
+            width: auto;
+            border-radius: 0.25rem;
+        }
+        #remove-image-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+            border-radius: 9999px; /* rounded-full */
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+        }
+
+    </style>
+</head>
+<body class="bg-neo-dark text-gray-100">
+
+    <!-- =========== Full App Container =========== -->
+    <div id="app-container" class="flex h-screen w-screen overflow-hidden">
+        
+        <!-- =========== Sidebar (Left Panel) =========== -->
+        <nav id="sidebar" class="bg-neo-sidebar w-64 h-full flex-shrink-0 flex-col p-4 absolute md:relative z-20 transform -translate-x-full md:translate-x-0 transition-transform duration-300 ease-in-out">
+            
+            <!-- Logo and New Chat Button (NEO CHAT AI Style) -->
+            <div class="flex justify-between items-center mb-4 border-b border-gray-700 pb-4">
+                 <div class="flex items-center space-x-2 text-white">
+                    <svg class="w-6 h-6 text-neo-accent" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"></path><path d="M12 4v16"></path><path d="M4.93 15.07l.71-.71"></path><path d="M18.36 9.77l.71-.71"></path><path d="M4 12H2"></path><path d="M22 12h-2"></path><path d="M4.93 8.93l.71.71"></path><path d="M18.36 15.07l.71.71"></path><path d="M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z"></path></svg>
+                    <span class="font-bold text-lg">NEO CHAT AI</span>
+                </div>
+            </div>
+
+            <!-- New Chat Button -->
+            <button id="new-chat-btn" class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-neo-accent text-neo-dark rounded-lg font-semibold hover:bg-cyan-400 transition-colors shadow-lg shadow-cyan-500/30">
+                <!-- Plus Icon -->
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                ការជជែកថ្មី
+            </button>
+
+
+            <!-- Chat History List -->
+            <div class="flex-1 overflow-y-auto sidebar-list mt-4 space-y-1">
+                <p class="text-xs font-semibold text-gray-400 uppercase tracking-wider px-2 pt-2 pb-1">ប្រវត្តិ</p>
+                <div id="conversations-list">
+                    <!-- Dynamic content goes here -->
+                </div>
+            </div>
+
+            <!-- Bottom Menu -->
+            <div class="mt-auto border-t border-gray-700 pt-4 space-y-2">
+                
+                <div class="space-y-1">
+                    <!-- Placeholder: Prompts -->
+                    <div class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-400 hover:bg-gray-700 rounded-lg transition-colors cursor-not-allowed">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22v-7"></path><path d="M9 18v-3"></path><path d="M15 15v-3"></path><path d="M19 12v-7"></path><path d="M2 22h20"></path><path d="M12 22v-10"></path></svg>
+                        Prompts (គំរូ)
+                    </div>
+                    <!-- Placeholder: Settings -->
+                    <div class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-400 hover:bg-gray-700 rounded-lg transition-colors cursor-not-allowed">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.44a2 2 0 0 1-2 2H4.44a2 2 0 0 0-2 2v.44a2 2 0 0 1-2 2v.44a2 2 0 0 0 2 2h.44a2 2 0 0 1 2 2v.44a2 2 0 0 0 2 2h.44a2 2 0 0 1 2 2v.44a2 2 0 0 0 2 2h.44a2 2 0 0 1 2-2v-.44a2 2 0 0 0 2-2h.44a2 2 0 0 1 2-2v-.44a2 2 0 0 0-2-2h-.44a2 2 0 0 1-2-2v-.44a2 2 0 0 0-2-2h-.44a2 2 0 0 1-2-2v-.44a2 2 0 0 0-2-2z"></path></svg>
+                        ការកំណត់
+                    </div>
+                </div>
+
+                <!-- Dark Mode Toggle -->
+                <button id="dark-mode-toggle" class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 rounded-lg transition-colors">
+                    <!-- Sun/Moon Icon -->
+                    <svg id="theme-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <!-- Moon icon (default) -->
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path> 
+                    </svg>
+                    <span id="theme-text">ប្តូរទៅពន្លឺថ្ងៃ</span>
+                </button>
+                
+                <!-- Profile/Logout Button -->
+                <button id="profile-btn" class="w-full flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-300 hover:bg-gray-700 rounded-lg transition-colors">
+                    <!-- User Icon -->
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <span id="user-email-display">...</span>
+                </button>
+            </div>
+
+            <!-- Powered by -->
+            <div class="text-xs text-center text-gray-500 mt-4">
+                Powered by <a href="https://www.laolimheang.space" target="_blank" rel="noopener noreferrer" class="underline hover:text-neo-accent">www.laolimheang.space</a>
+            </div>
+        </nav>
+        
+        <!-- Sidebar overlay for mobile -->
+        <div id="sidebar-overlay" class="fixed inset-0 bg-black/50 z-10 md:hidden hidden" onclick="toggleSidebar()"></div>
+
+        <!-- =========== Main Chat Area (Right Panel) =========== -->
+        <main class="flex-1 flex flex-col h-screen overflow-hidden bg-neo-dark">
+            
+            <!-- Chat Header -->
+            <header class="flex items-center justify-between p-4 border-b border-gray-700">
+                <!-- Mobile Menu Button -->
+                <button id="menu-toggle-btn" class="md:hidden p-2 rounded-lg hover:bg-gray-700" onclick="toggleSidebar()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                </button>
+                <div class="flex items-center gap-3">
+                    <h1 id="chat-title" class="text-lg font-semibold truncate text-neo-accent">NEO CHAT AI</h1>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="rename-chat-btn" title="ប្តូរឈ្មោះ" class="p-2 rounded-lg hover:bg-gray-700 hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                    </button>
+                    <button id="delete-chat-btn" title="លុបការជជែក" class="p-2 rounded-lg text-red-500 hover:bg-red-900/50 hidden">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Message List -->
+            <div id="message-list" class="flex-1 overflow-y-auto p-6 space-y-6 message-list">
+            </div>
+            
+            <!-- Typing Indicator -->
+            <div id="typing-indicator" class="px-6 py-4 hidden">
+                <div class="flex gap-3 items-center justify-start">
+                    <span class="flex-shrink-0 w-8 h-8 rounded-full bg-neo-bubble text-white flex items-center justify-center font-semibold">AI</span>
+                    <div class="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="p-6 border-t border-gray-700">
+                <!-- Image Preview -->
+                <div id="image-preview-container">
+                    <img id="image-preview" src="" alt="Image Preview" />
+                    <button id="remove-image-btn" title="ដករូបភាពចេញ">&times;</button>
+                </div>
+
+                <form id="chat-form" class="flex items-center gap-4 bg-neo-sidebar rounded-xl p-2 shadow-lg">
+                    <!-- Image Upload Button -->
+                    <button type="button" id="upload-image-btn" class="p-3 text-gray-400 hover:text-neo-accent rounded-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                    </button>
+                    <input type="file" id="image-input-file" class="hidden" accept="image/png, image/jpeg, image/webp">
+
+                    <textarea id="message-input" rows="1" class="flex-1 p-3 bg-neo-sidebar border-none resize-none focus:outline-none placeholder-gray-500" placeholder="វាយសាររបស់អ្នកនៅទីនេះ..."></textarea>
+                    <button type="submit" class="p-3 bg-neo-accent text-neo-dark rounded-xl hover:bg-cyan-400 disabled:opacity-50 transition-colors shadow">
+                        <!-- Send Icon -->
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                    </button>
+                </form>
+                <p class="text-xs text-center text-gray-500 mt-2">
+                    User ID: <span id="userIdDisplay" class="font-mono">...</span>
+                </p>
+            </div>
+        </main>
+    </div>
+
+    <!-- =========== Login Modal =========== -->
+    <div id="login-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-neo-dark/90 p-4">
+        <div class="bg-neo-sidebar w-full max-w-md p-10 rounded-2xl shadow-xl shadow-black/50 border border-gray-700">
+            
+            <div class="flex flex-col items-center mb-8">
+                <svg class="w-10 h-10 text-neo-accent mb-2" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h.01"></path><path d="M12 4v16"></path><path d="M4.93 15.07l.71-.71"></path><path d="M18.36 9.77l.71-.71"></path><path d="M4 12H2"></path><path d="M22 12h-2"></path><path d="M4.93 8.93l.71.71"></path><path d="M18.36 15.07l.71.71"></path><path d="M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z"></path></svg>
+                <h2 class="text-3xl font-bold text-center text-white">NEO CHAT AI</h2>
+            </div>
+            
+            <p class="text-center text-gray-400 mb-6">សូមចូលប្រើដើម្បីចាប់ផ្តើមការជជែក</p>
+            
+            <div class="space-y-4">
+                
+                <!-- Google Login Button -->
+                <button id="google-login-btn" class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-white text-gray-900 rounded-lg font-semibold hover:bg-gray-100 transition-colors">
+                    <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"></path><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"></path><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"></path><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"></path><path fill="none" d="M0 0h48v48H0z"></path></svg>
+                    Continue with Google
+                </button>
+                
+                <!-- Divider -->
+                <div class="flex items-center">
+                    <hr class="flex-1 border-gray-600">
+                    <span class="px-4 text-sm text-gray-500">ឬ</span>
+                    <hr class="flex-1 border-gray-600">
+                </div>
+
+                <!-- Email/Password Form -->
+                <form id="email-login-form" class="space-y-4">
+                    <input id="email-input" type="email" placeholder="អ៊ីមែល" class="w-full px-4 py-3 bg-neo-sidebar border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-neo-accent" required>
+                    <input id="password-input" type="password" placeholder="ពាក្យសម្ងាត់" class="w-full px-4 py-3 bg-neo-sidebar border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-neo-accent" required>
+                    
+                    <div id="login-error" class="text-red-500 text-sm hidden"></div>
+
+                    <div class="flex justify-between items-center text-sm">
+                        <label class="flex items-center text-gray-400 cursor-not-allowed">
+                            <input type="checkbox" class="mr-2 rounded border-gray-600 bg-gray-700 text-neo-accent focus:ring-neo-accent/50" disabled>
+                            Remember me?
+                        </label>
+                        <button type="button" id="forgot-password-btn" class="text-gray-400 hover:text-neo-accent transition-colors">ភ្លេចពាក្យសម្ងាត់?</button>
+                    </div>
+
+                    <button type="button" id="login-btn" class="w-full py-3 px-4 bg-neo-accent text-neo-dark rounded-lg font-semibold hover:bg-cyan-400 transition-colors shadow">ចូលប្រើ</button>
+                    
+                    <div class="text-center text-sm text-gray-400 pt-2">
+                        Don't have an account? 
+                        <button type="button" id="signup-btn" class="text-neo-accent hover:underline font-semibold">ចុះឈ្មោះ</button>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- =========== Profile Modal (Hidden) =========== -->
+    <div id="profile-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-neo-dark/90 p-4 hidden">
+        <div class="bg-neo-sidebar w-full max-w-sm p-8 rounded-2xl shadow-xl border border-gray-700">
+            <h2 class="text-2xl font-bold text-center mb-4">គណនីរបស់អ្នក</h2>
+            <p id="profile-email" class="text-center text-gray-400 mb-6"></p>
+            <div class="space-y-4">
+                <button id="contact-btn" class="w-full py-3 px-4 bg-neo-accent text-neo-dark rounded-lg font-semibold hover:bg-cyan-400">ទាក់ទង</button>
+                <button id="logout-btn" class="w-full py-3 px-4 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700">ចាកចេញ</button>
+                <button id="close-profile-modal-btn" class="w-full py-3 px-4 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600">បិទ</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- =========== Custom Alert/Confirm Modal (Hidden) =========== -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-neo-dark/90 p-4 hidden">
+        <div class="bg-neo-sidebar w-full max-w-sm p-6 rounded-2xl shadow-xl border border-gray-700">
+            <h2 id="confirm-title" class="text-xl font-bold mb-4"></h2>
+            <p id="confirm-message" class="text-gray-400 mb-6"></p>
+            <div class="flex justify-end gap-4">
+                <button id="confirm-cancel-btn" class="py-2 px-5 bg-gray-700 text-white rounded-lg font-semibold hover:bg-gray-600">បោះបង់</button>
+                <button id="confirm-ok-btn" class="py-2 px-5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700">យល់ព្រម</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- =========== 5. Firebase SDKs (v10+) =========== -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { 
+            getAuth, 
+            onAuthStateChanged, 
+            GoogleAuthProvider, 
+            signInWithPopup, 
+            sendPasswordResetEmail, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
+            signOut,
+            signInAnonymously,
+            signInWithCustomToken,
+            setPersistence,
+            browserLocalPersistence
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            doc, 
+            getDoc, 
+            setDoc, 
+            addDoc,
+            updateDoc,
+            deleteDoc,
+            collection, 
+            onSnapshot, 
+            query, 
+            where, 
+            orderBy, 
+            Timestamp,
+            serverTimestamp,
+            setLogLevel
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // នាំចូល markdown-it សម្រាប់ Render Markdown
+        import { marked } from "https://cdn.jsdelivr.net/npm/marked/lib/marked.esm.js";
+
+        // --- GLOBAL STATE & CONFIG ---
+        
+        // 1. ដាក់ Gemini API Key របស់អ្នកនៅទីនេះ
+        const GEMINI_API_KEY = "AIzaSyB6l7LIif6gg5TMU05TSXZe5exGXcV739c";
+        const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:streamGenerateContent?key=${GEMINI_API_KEY}`;
+
+        // 2. ដាក់ Firebase Config ផ្ទាល់របស់អ្នកនៅទីនេះ
+        const appId = 'default-gemini-chat'; // ទុកវាដូចដើម
+        const firebaseConfig = {
+            apiKey: "AIzaSyC47kiV4yy2QwUgIfZWGo16tkz_a-a-r4g",
+            authDomain: "shop-db-168.firebaseapp.com",
+            projectId: "shop-db-168",
+            storageBucket: "shop-db-168.firebasestorage.app",
+            messagingSenderId: "506484276851",
+            appId: "1:506484276851:web:ce59a0fd1441a1e5b87406",
+            measurementId: "G-VBSG7LX7RH"
+        };
+        const initialAuthToken = null; // ទុកវា null
+
+        let app, auth, db, googleProvider; // RE-ADDED googleProvider
+        let currentUserId = null;
+        let currentChatId = null;
+        let currentChatHistory = []; // Local array to hold message objects
+        let currentImageBase64 = null; // For image upload
+        let currentImageMimeType = null; // For image upload
+        let convosUnsubscribe = null;
+        let messagesUnsubscribe = null;
+        
+        // For custom confirm modal
+        let confirmResolve = null;
+
+        // --- DOM ELEMENTS ---
+        const loginModal = document.getElementById('login-modal');
+        const appContainer = document.getElementById('app-container');
+        const sidebar = document.getElementById('sidebar');
+        const sidebarOverlay = document.getElementById('sidebar-overlay');
+        const menuToggleBtn = document.getElementById('menu-toggle-btn');
+        
+        // Auth
+        const emailInput = document.getElementById('email-input');
+        const passwordInput = document.getElementById('password-input');
+        const loginBtn = document.getElementById('login-btn');
+        const signupBtn = document.getElementById('signup-btn');
+        const googleLoginBtn = document.getElementById('google-login-btn'); // RE-ADDED
+        const forgotPasswordBtn = document.getElementById('forgot-password-btn'); // NEW
+        const loginError = document.getElementById('login-error');
+        const logoutBtn = document.getElementById('logout-btn');
+        
+        // Profile
+        const profileBtn = document.getElementById('profile-btn');
+        const userEmailDisplay = document.getElementById('user-email-display');
+        const userIdDisplay = document.getElementById('userIdDisplay');
+        const profileModal = document.getElementById('profile-modal');
+        const profileEmail = document.getElementById('profile-email');
+        const closeProfileModalBtn = document.getElementById('close-profile-modal-btn');
+        const contactBtn = document.getElementById('contact-btn');
+        
+        // Chat
+        const newChatBtn = document.getElementById('new-chat-btn');
+        const conversationsList = document.getElementById('conversations-list');
+        const chatTitle = document.getElementById('chat-title');
+        const renameChatBtn = document.getElementById('rename-chat-btn');
+        const deleteChatBtn = document.getElementById('delete-chat-btn');
+        const messageList = document.getElementById('message-list');
+        const typingIndicator = document.getElementById('typing-indicator');
+        const chatForm = document.getElementById('chat-form');
+        const messageInput = document.getElementById('message-input');
+        const sendBtn = chatForm.querySelector('button[type="submit"]');
+        
+        // Image Upload
+        const uploadImageBtn = document.getElementById('upload-image-btn');
+        const imageInputFile = document.getElementById('image-input-file');
+        const imagePreviewContainer = document.getElementById('image-preview-container');
+        const imagePreview = document.getElementById('image-preview');
+        const removeImageBtn = document.getElementById('remove-image-btn');
+
+        // Theme
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        const themeIcon = document.getElementById('theme-icon');
+        const themeText = document.getElementById('theme-text');
+        
+        // Confirm Modal
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmTitle = document.getElementById('confirm-title');
+        const confirmMessage = document.getElementById('confirm-message');
+        const confirmOkBtn = document.getElementById('confirm-ok-btn');
+        const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+
+        // --- 0. INITIALIZATION ---
+        function initApp() {
+            try {
+                // IMPORTANT: Firebase Init must be called with a valid Config
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+                googleProvider = new GoogleAuthProvider(); // RE-ADDED
+                setLogLevel('Debug');
+                
+                initTheme();
+                addEventListeners(); // <--- ត្រូវតែមានតែមួយនៅទីនេះ
+                
+                // Start Auth listener
+                setupAuthListener();
+                
+                // Persistence is handled by browserLocalPersistence default if not set explicitly
+
+            } catch (error) {
+                console.error("Firebase Init Error:", error);
+                
+                // ត្រូវប្រាកដថាប៊ូតុងអាចចុចបាន ទោះបីជា init បរាជ័យក៏ដោយ (សម្រាប់ debugging)
+                loginBtn.disabled = false;
+                signupBtn.disabled = false;
+                googleLoginBtn.disabled = false;
+
+                document.body.innerHTML = `<div class="p-8 text-red-500">Error: មិនអាចចាប់ផ្តើម Firebase បានទេ។ សូមពិនិត្យមើល Firebase Config។<pre>${error.message}</pre></div>`;
+            }
+        }
+        
+        // --- 1. AUTHENTICATION ---
+        function setupAuthListener() {
+            onAuthStateChanged(auth, async (user) => {
+                
+                if (user) {
+                    // User is signed in
+                    currentUserId = user.uid;
+                    userEmailDisplay.textContent = user.email || "គណនីអនាមិក";
+                    userIdDisplay.textContent = currentUserId;
+                    profileEmail.textContent = user.email || "មិនមានអ៊ីមែល";
+                    
+                    loginModal.classList.add('hidden');
+                    appContainer.classList.remove('hidden'); 
+                    
+                    // Save/Update user profile in Firestore
+                    // CRITICAL FIX: Removed 'await' here to prevent the UI from blocking if Rules fail
+                    saveUserProfile(user); 
+                    
+                    // Load user's conversations
+                    loadConversations();
+
+                } else {
+                    // User is signed out
+                    currentUserId = null;
+                    loginModal.classList.remove('hidden');
+                    
+                    // Clear UI
+                    conversationsList.innerHTML = '';
+                    resetChatArea();
+                    
+                    // Detach listeners
+                    if (convosUnsubscribe) convosUnsubscribe();
+                    if (messagesUnsubscribe) messagesUnsubscribe();
+                    
+                    // User will manually log in
+                }
+            });
+        }
+        
+        async function saveUserProfile(user) {
+            const userRef = doc(db, `artifacts/${appId}/users`, user.uid);
+            try {
+                // ប្រតិបត្តិការនេះត្រូវតែត្រូវបានអនុញ្ញាតដោយ Rules 
+                await setDoc(userRef, {
+                    uid: user.uid,
+                    email: user.email,
+                    displayName: user.displayName,
+                    photoURL: user.photoURL,
+                    lastLogin: serverTimestamp()
+                }, { merge: true }); // Merge to avoid overwriting
+            } catch (error) {
+                console.error("Error saving user profile:", error);
+                // ខ្ញុំជឿថា Error នេះជាមូលហេតុ
+                showLoginError(`Auth Error: ${error.message}. សូមពិនិត្យ Firestore Rules។`);
+            }
+        }
+
+        function handleEmailSignup() {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            if (password.length < 6) {
+                showLoginError("ពាក្យសម្ងាត់ត្រូវមានយ៉ាងតិច 6 តួអក្សរ។");
+                return;
+            }
+            createUserWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    console.log("Signed up:", userCredential.user);
+                    hideLoginError();
+                })
+                .catch(showLoginError);
+        }
+
+        function handleEmailLogin() {
+            const email = emailInput.value;
+            const password = passwordInput.value;
+            signInWithEmailAndPassword(auth, email, password)
+                .then((userCredential) => {
+                    console.log("Logged in:", userCredential.user);
+                    hideLoginError();
+                })
+                .catch(showLoginError);
+        }
+        
+        function handleGoogleLogin() {
+            signInWithPopup(auth, googleProvider)
+                .then((result) => {
+                    console.log("Google login success:", result.user);
+                    hideLoginError();
+                })
+                .catch(showLoginError);
+        }
+
+        // NEW: Forgot Password Handler
+        function handleForgotPassword() {
+            const email = emailInput.value.trim();
+            if (!email) {
+                showLoginError("សូមបញ្ចូលអ៊ីមែលរបស់អ្នកនៅក្នុងប្រអប់ចូលប្រើដើម្បីកំណត់ពាក្យសម្ងាត់ឡើងវិញ។");
+                return;
+            }
+
+            sendPasswordResetEmail(auth, email)
+                .then(() => {
+                    showLoginError(`បានផ្ញើអ៊ីមែលកំណត់ពាក្យសម្ងាត់ឡើងវិញទៅកាន់ ${email} ហើយ។ សូមពិនិត្យប្រអប់សាររបស់អ្នក!`, "success"); // Custom success message in error div
+                })
+                .catch(showLoginError);
+        }
+
+        function handleLogout() {
+            signOut(auth).catch((error) => console.error("Logout Error:", error));
+            profileModal.classList.add('hidden');
+        }
+
+        function showLoginError(error, type = "error") {
+            console.error("Auth Error:", error);
+            const isError = type === "error";
+            const message = isError ? (error.message || (typeof error === 'string' ? error : "មានបញ្ហា។")) : error;
+            
+            loginError.textContent = message;
+            loginError.classList.remove('hidden');
+            loginError.classList.toggle('text-red-500', isError);
+            loginError.classList.toggle('text-green-500', !isError);
+        }
+        
+        function hideLoginError() {
+            loginError.classList.add('hidden');
+        }
+
+        // --- 2. FIRESTORE (Chat Logic) ---
+
+        // Load all conversations for the sidebar
+        function loadConversations() {
+            if (convosUnsubscribe) convosUnsubscribe(); // Detach old listener
+            if (!currentUserId) return;
+
+            const convosRef = collection(db, `artifacts/${appId}/users/${currentUserId}/conversations`);
+            // Sort by last update, descending. Requires Firestore index.
+            const q = query(convosRef, orderBy("updatedAt", "desc"));
+
+            convosUnsubscribe = onSnapshot(q, (snapshot) => {
+                conversationsList.innerHTML = ''; // Clear list
+                if (snapshot.empty) {
+                    conversationsList.innerHTML = `<p class="px-2 text-sm text-gray-400">មិនមានការជជែក</p>`;
+                    resetChatArea();
+                    return;
+                }
+                
+                snapshot.docs.forEach(doc => {
+                    const convo = doc.data();
+                    const li = document.createElement('li');
+                    li.className = `p-2 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-700 text-sm truncate ${doc.id === currentChatId ? 'bg-blue-100 dark:bg-blue-900/50' : ''}`;
+                    li.textContent = convo.title || "ការជជែកគ្មានចំណងជើង";
+                    li.dataset.id = doc.id;
+                    li.onclick = () => selectConversation(doc.id, convo.title);
+                    conversationsList.appendChild(li);
+                });
+                
+                // If no chat is selected, or current chat was deleted, select the latest one
+                if (!currentChatId || !snapshot.docs.some(d => d.id === currentChatId)) {
+                    selectConversation(snapshot.docs[0].id, snapshot.docs[0].data().title);
+                }
+                
+            }, (error) => {
+                console.error("Error loading conversations:", error);
+                conversationsList.innerHTML = `<p class="px-2 text-sm text-red-400">Error ផ្ទុកទិន្នន័យ</p>`;
+            });
+        }
+
+        // Select a conversation to load its messages
+        function selectConversation(id, title) {
+            currentChatId = id;
+            chatTitle.textContent = title;
+            
+            // Highlight active chat in sidebar
+            document.querySelectorAll('#conversations-list li').forEach(li => {
+                li.classList.toggle('bg-blue-100', li.dataset.id === id);
+                li.classList.toggle('dark:bg-blue-900/50', li.dataset.id === id);
+            });
+            
+            // Show action buttons
+            renameChatBtn.classList.remove('hidden');
+            deleteChatBtn.classList.remove('hidden');
+            
+            // Load messages for this chat
+            loadMessages(id);
+        }
+
+        // Load messages for the selected chat
+        function loadMessages(chatId) {
+            if (messagesUnsubscribe) messagesUnsubscribe(); // Detach old listener
+            
+            messageList.innerHTML = ''; // Clear messages
+            currentChatHistory = []; // Clear local history
+
+            const messagesRef = collection(db, `artifacts/${appId}/users/${currentUserId}/conversations/${chatId}/messages`);
+            const q = query(messagesRef, orderBy("createdAt", "asc"));
+
+            messagesUnsubscribe = onSnapshot(q, (snapshot) => {
+                messageList.innerHTML = ''; // Clear list on new update
+                currentChatHistory = [];
+                
+                snapshot.docs.forEach(doc => {
+                    const msg = doc.data();
+                    currentChatHistory.push({ role: msg.role, parts: [{ text: msg.content }] });
+                    renderMessage(msg.role, msg.content);
+                });
+                
+                scrollToBottom();
+            }, (error) => {
+                console.error("Error loading messages:", error);
+                renderMessage('system', 'Error: មិនអាចផ្ទុកសារបានទេ។');
+            });
+        }
+        
+        // Handle "New Chat" button click
+        async function handleNewChat() {
+            if (!currentUserId) return;
+            
+            try {
+                const convosRef = collection(db, `artifacts/${appId}/users/${currentUserId}/conversations`);
+                const newConvo = {
+                    title: "ការជជែកថ្មី",
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp(),
+                    owner: currentUserId
+                };
+                const docRef = await addDoc(convosRef, newConvo);
+                
+                // No need to call selectConversation, onSnapshot will pick it up
+                // and auto-select the new one (since it's the latest)
+                // But we set currentChatId to ensure it's selected immediately
+                currentChatId = docRef.id; 
+                resetChatArea(); // Visually reset
+                chatTitle.textContent = "NEO CHAT AI"; // Use default title
+                
+            } catch (error) {
+                console.error("Error creating new chat:", error);
+                renderMessage('system', 'Error: មិនអាចបង្កើតការជជែកថ្មីបានទេ។');
+            }
+        }
+        
+        // Handle Renaming
+        async function handleRenameChat() {
+            if (!currentChatId) return;
+            const currentTitle = chatTitle.textContent;
+            const newTitle = prompt(`សូមដាក់ចំណងជើងថ្មីសម្រាប់ "${currentTitle}" :`);
+            
+            if (newTitle && newTitle.trim() !== "" && newTitle.trim() !== currentTitle) {
+                const convoRef = doc(db, `artifacts/${appId}/users/${currentUserId}/conversations`, currentChatId);
+                try {
+                    await updateDoc(convoRef, { title: newTitle.trim() });
+                    // UI will update via onSnapshot
+                    chatTitle.textContent = newTitle.trim();
+                } catch (error) {
+                    console.error("Error renaming chat:", error);
+                }
+            }
+        }
+        
+        // Handle Deleting
+        async function handleDeleteChat() {
+            if (!currentChatId) return;
+
+            const confirmed = await showConfirm(
+                "លុបការជជែក?", 
+                `តើអ្នកពិតជាចង់លុបការជជែក "${chatTitle.textContent}" មែនទេ? វាមិនអាចទាញយកមកវិញបានទេ។`
+            );
+
+            if (confirmed) {
+                const convoRef = doc(db, `artifacts/${appId}/users/${currentUserId}/conversations`, currentChatId);
+                try {
+                    await deleteDoc(convoRef);
+                    // Deleting subcollections (messages) is hard from the client.
+                    // Best practice is a Firebase Function, but for client-only,
+                    // we just delete the convo doc. The messages become orphaned.
+                    // onSnapshot on convos list will update the UI.
+                    resetChatArea();
+                    currentChatId = null; // Important
+                } catch (error) {
+                    console.error("Error deleting chat:", error);
+                }
+            }
+        }
+
+        // Handle form submission
+        async function handleSendMessage(e) {
+            e.preventDefault();
+            const prompt = messageInput.value.trim();
+            // Send if there is a prompt OR an image
+            if ((prompt === "" && !currentImageBase64) || !currentUserId) return;
+            
+            // Disable form
+            setFormDisabled(true);
+            
+            let chatId = currentChatId;
+            const imageToSend = currentImageBase64; // Capture current image state
+            const mimeTypeToSend = currentImageMimeType;
+            
+            // Clear image preview *before* sending
+            clearImagePreview();
+            
+            // If it's a new chat, create it first
+            if (!chatId) {
+                try {
+                    const convosRef = collection(db, `artifacts/${appId}/users/${currentUserId}/conversations`);
+                    const newConvo = {
+                        title: prompt.substring(0, 30) + "...", // Use first 30 chars as title
+                        createdAt: serverTimestamp(),
+                        updatedAt: serverTimestamp(),
+                        owner: currentUserId
+                    };
+                    const docRef = await addDoc(convosRef, newConvo);
+                    chatId = docRef.id;
+                    currentChatId = docRef.id; // Set global
+                    chatTitle.textContent = newConvo.title;
+                    // loadConversations() listener will handle the rest
+                } catch (error) {
+                    console.error("Error creating new chat on send:", error);
+                    renderMessage('system', 'Error: មិនអាចបង្កើតការជជែកបានទេ។');
+                    setFormDisabled(false);
+                    return;
+                }
+            }
+            
+            // 1. Save User's message to Firestore
+            // *** សម្គាល់: យើងរក្សាទុកតែអត្ថបទ (prompt) ទេ។ យើងមិនរក្សាទុករូបភាព (base64) ទៅ Firestore ទេ ***
+            // *** Note: We only save the text. We do NOT save the image base64 to Firestore ***
+            const messagesRef = collection(db, `artifacts/${appId}/users/${currentUserId}/conversations/${chatId}/messages`);
+            try {
+                await addDoc(messagesRef, {
+                    role: 'user',
+                    content: prompt,
+                    createdAt: serverTimestamp()
+                });
+                
+                // Update conversation timestamp
+                const convoRef = doc(db, `artifacts/${appId}/users/${currentUserId}/conversations`, chatId);
+                await updateDoc(convoRef, { updatedAt: serverTimestamp() });
+
+                // UI for user message will update via onSnapshot
+                messageInput.value = ''; // Clear input
+                messageInput.style.height = 'auto'; // Reset height
+                
+                // 2. Call Gemini API
+                await getGeminiResponse(chatId, prompt, currentChatHistory, imageToSend, mimeTypeToSend);
+                
+            } catch (error) {
+                console.error("Error sending message:", error);
+                renderMessage('system', `Error: ${error.message}`);
+            } finally {
+                setFormDisabled(false);
+                messageInput.focus();
+            }
+        }
+
+        // --- 3. GEMINI API ---
+        async function getGeminiResponse(chatId, userPrompt, history, imageBase64, mimeType) {
+            typingIndicator.classList.remove('hidden');
+            scrollToBottom();
+
+            // Create a temporary message element for streaming
+            const tempMessageEl = renderMessage('model', '', true);
+            const contentEl = tempMessageEl.querySelector('.markdown-content');
+            
+            let fullResponseText = "";
+            
+            // Format history for Gemini API (user/model roles)
+            const apiHistory = history.map(msg => ({
+                role: msg.role === 'ai' ? 'model' : 'user', // Map 'ai' to 'model'
+                parts: msg.parts
+            })).filter(msg => msg.role === 'user' || msg.role === 'model'); // Filter out system messages
+
+            // Build the current user's message (text + optional image)
+            const userParts = [{ text: userPrompt }];
+            if (imageBase64 && mimeType) {
+                userParts.push({
+                    inlineData: {
+                        mimeType: mimeType,
+                        data: imageBase64
+                    }
+                });
+            }
+
+            const payload = {
+                contents: [
+                    ...apiHistory,
+                    {
+                        role: 'user',
+                        parts: userParts
+                    }
+                ],
+                // generationConfig: { ... } // Can add temp, top_k etc.
+            };
+
+            try {
+                const response = await fetch(GEMINI_API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    const errorBody = await response.json();
+                    throw new Error(`API Error: ${response.status} ${response.statusText}. ${errorBody.error.message}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                // This will process the streamed chunks
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value, { stream: true });
+                    // Streamed response is JSON wrapped in "data: ".
+                    // Sometimes multiple chunks arrive together.
+                    const jsonChunks = chunk
+                        .split('\n')
+                        .filter(line => line.startsWith('data: '))
+                        .map(line => line.substring(5));
+
+                    for (const jsonChunk of jsonChunks) {
+                        try {
+                            const data = JSON.parse(jsonChunk);
+                            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                            if (text) {
+                                fullResponseText += text;
+                                contentEl.innerHTML = marked.parse(fullResponseText + " ▌"); // Use ▌ as cursor
+                            }
+                        } catch (e) {
+                            console.warn("Error parsing stream chunk:", e, jsonChunk);
+                        }
+                    }
+                    scrollToBottom();
+                }
+
+                // Clean up cursor
+                contentEl.innerHTML = marked.parse(fullResponseText);
+                
+                // 3. Save AI's response to Firestore
+                const messagesRef = collection(db, `artifacts/${appId}/users/${currentUserId}/conversations/${chatId}/messages`);
+                await addDoc(messagesRef, {
+                    role: 'ai', // Save as 'ai' in our DB
+                    content: fullResponseText,
+                    createdAt: serverTimestamp()
+                });
+                
+                // Remove the temporary message, as onSnapshot will add the permanent one
+                tempMessageEl.remove();
+
+            } catch (error) {
+                console.error("Gemini API Error:", error);
+                // Update temp element with error
+                contentEl.innerHTML = `<p class="text-red-500"><strong>Error:</strong> ${error.message}</p>`;
+                
+                // We still save the error to history
+                try {
+                    const messagesRef = collection(db, `artifacts/${appId}/users/${currentUserId}/conversations/${chatId}/messages`);
+                    await addDoc(messagesRef, {
+                        role: 'ai',
+                        content: `Error: ${error.message}`,
+                        createdAt: serverTimestamp()
+                    });
+                    tempMessageEl.remove();
+                } catch (saveError) {
+                    console.error("Error saving error message:", saveError);
+                }
+                
+            } finally {
+                typingIndicator.classList.add('hidden');
+            }
+        }
+
+
+        // --- 4. UI & HELPERS ---
+        
+        /**
+         * Renders a message in the chat window.
+         * @param {string} role - 'user', 'model'/'ai', or 'system'
+         * @param {string} content - The text content
+         * @param {boolean} [isStreaming=false] - If true, returns the element instead of appending
+         */
+        function renderMessage(role, content, isStreaming = false) {
+            const msgDiv = document.createElement('div');
+            msgDiv.classList.add("flex", "gap-3", "max-w-full");
+            
+            let html = '';
+            let avatar = '';
+            let bubbleContent = '';
+            let containerClass = '';
+            
+            if (role === 'user') {
+                containerClass = "justify-end"; // Aligns container to the right
+                avatar = `<span class="flex-shrink-0 w-8 h-8 rounded-full bg-neo-user-bubble text-white flex items-center justify-center font-semibold text-sm">ME</span>`;
+                bubbleContent = `<div class="p-3 bg-neo-user-bubble text-white rounded-lg rounded-br-none shadow max-w-[80%]"><p>${content.replace(/\n/g, '<br>')}</p></div>`;
+                
+                html = `${bubbleContent}${avatar}`;
+            } else if (role === 'model' || role === 'ai') {
+                containerClass = "justify-start"; // Aligns container to the left
+                avatar = `<span class="flex-shrink-0 w-8 h-8 rounded-full bg-neo-bubble text-white flex items-center justify-center font-semibold text-sm">AI</span>`;
+                
+                // AI bubble for markdown output and visibility fix
+                bubbleContent = `
+                    <div class="w-full max-w-[80%] p-3 bg-neo-bubble text-gray-100 rounded-lg rounded-tl-none shadow markdown-content">
+                        ${isStreaming ? content : marked.parse(content)}
+                    </div>
+                `;
+
+                html = `${avatar}${bubbleContent}`;
+            } else if (role === 'system') {
+                containerClass = "justify-center";
+                html = `<div class="w-full text-center text-sm text-gray-500 italic p-4">${content}</div>`;
+            }
+            
+            msgDiv.classList.add(containerClass);
+            msgDiv.innerHTML = html;
+            
+            if (isStreaming) {
+                messageList.appendChild(msgDiv);
+                return msgDiv; // Return element for streaming update
+            }
+            
+            messageList.appendChild(msgDiv);
+            scrollToBottom();
+            
+            // Re-check visibility for AI messages after rendering
+            if (role === 'model' || role === 'ai') {
+                const contentDiv = msgDiv.querySelector('.markdown-content');
+                if (contentDiv) {
+                    contentDiv.innerHTML = marked.parse(content);
+                }
+            }
+        }
+
+        function setFormDisabled(isDisabled) {
+            messageInput.disabled = isDisabled;
+            sendBtn.disabled = isDisabled;
+            uploadImageBtn.disabled = isDisabled; // Disable image upload too
+            if (isDisabled) {
+                sendBtn.classList.add('opacity-50');
+            } else {
+                sendBtn.classList.remove('opacity-50');
+            }
+        }
+        
+        function scrollToBottom() {
+            messageList.scrollTop = messageList.scrollHeight;
+        }
+        
+        function resetChatArea() {
+            messageList.innerHTML = '';
+            chatTitle.textContent = 'NEO CHAT AI'; // Set default title
+            currentChatId = null;
+            currentChatHistory = [];
+            renameChatBtn.classList.add('hidden');
+            deleteChatBtn.classList.add('hidden');
+            if (messagesUnsubscribe) messagesUnsubscribe(); // Stop listening
+        }
+        
+        function toggleSidebar() {
+            sidebar.classList.toggle('-translate-x-full');
+            sidebarOverlay.classList.toggle('hidden');
+        }
+
+        // --- Theme Toggle ---
+        function initTheme() {
+            // Force Dark Mode based on NEO CHAT AI design
+            setTheme('dark');
+        }
+
+        function setTheme(theme) {
+            // Force Dark Mode to match NEO CHAT AI design
+            if (theme === 'dark') {
+                document.documentElement.classList.add('dark');
+                localStorage.theme = 'dark';
+                themeIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`; // Moon
+                themeText.textContent = 'ប្តូរទៅពន្លឺថ្ងៃ';
+            } else {
+                // If light mode is toggled, temporarily allow it, but we encourage dark mode for this theme
+                document.documentElement.classList.remove('dark');
+                localStorage.theme = 'light';
+                themeIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`; // Sun
+                themeText.textContent = 'ប្តូរទៅពេលយប់';
+            }
+        }
+        
+        // --- Custom Confirm Modal ---
+        function showConfirm(title, message) {
+            confirmTitle.textContent = title;
+            confirmMessage.textContent = message;
+            confirmModal.classList.remove('hidden');
+            
+            return new Promise((resolve) => {
+                confirmResolve = resolve;
+            });
+        }
+        
+        function handleConfirm(result) {
+            confirmModal.classList.add('hidden');
+            if (confirmResolve) {
+                confirmResolve(result);
+                confirmResolve = null;
+            }
+        }
+
+        // --- 5. EVENT LISTENERS ---
+        function addEventListeners() {
+            // Auth
+            loginBtn.addEventListener('click', handleEmailLogin);
+            signupBtn.addEventListener('click', handleEmailSignup);
+            googleLoginBtn.addEventListener('click', handleGoogleLogin); // RE-ADDED
+            forgotPasswordBtn.addEventListener('click', handleForgotPassword); // NEW
+            logoutBtn.addEventListener('click', handleLogout);
+            
+            // Profile Modal
+            profileBtn.addEventListener('click', () => profileModal.classList.remove('hidden'));
+            closeProfileModalBtn.addEventListener('click', () => profileModal.classList.add('hidden'));
+            contactBtn.addEventListener('click', () => {
+                window.open('https://www.laolimheang.space', '_blank', 'noopener,noreferrer');
+            });
+
+            // Chat
+            newChatBtn.addEventListener('click', handleNewChat);
+            chatForm.addEventListener('submit', handleSendMessage);
+            renameChatBtn.addEventListener('click', handleRenameChat);
+            deleteChatBtn.addEventListener('click', handleDeleteChat);
+
+            // Image Upload
+            uploadImageBtn.addEventListener('click', () => imageInputFile.click());
+            imageInputFile.addEventListener('change', handleImageSelection);
+            removeImageBtn.addEventListener('click', clearImagePreview);
+
+            // Theme
+            darkModeToggle.addEventListener('click', () => {
+                setTheme(localStorage.theme === 'dark' ? 'light' : 'dark');
+            });
+            
+            // Mobile Sidebar
+            menuToggleBtn.addEventListener('click', toggleSidebar);
+            sidebarOverlay.addEventListener('click', toggleSidebar);
+            
+            // Confirm Modal Buttons
+            confirmOkBtn.addEventListener('click', () => handleConfirm(true));
+            confirmCancelBtn.addEventListener('click', () => handleConfirm(false));
+            
+            // Auto-resize textarea
+            messageInput.addEventListener('input', () => {
+                messageInput.style.height = 'auto';
+                messageInput.style.height = (messageInput.scrollHeight) + 'px';
+            });
+        }
+
+        // --- Image Upload Helpers ---
+        function handleImageSelection(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // Check type
+            if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                renderMessage('system', 'Error: ប្រភេទរូបភាពមិនត្រឹមត្រូវ។ សូមប្រើ JPEG, PNG, ឬ WebP។');
+                return;
+            }
+            
+            // Check size (e.g., 4MB limit for Gemini API)
+            if (file.size > 4 * 1024 * 1024) {
+                 renderMessage('system', 'Error: រូបភាពធំពេក។ ទំហំអតិបរមាគឺ 4MB។');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const dataUrl = e.target.result;
+                showImagePreview(dataUrl);
+                
+                // Split Data URL (data:image/jpeg;base64,...)
+                const parts = dataUrl.split(';base64,');
+                currentImageMimeType = parts[0].split(':')[1];
+                currentImageBase64 = parts[1];
+            };
+            reader.onerror = (e) => {
+                console.error("FileReader error:", e);
+                renderMessage('system', 'Error: មិនអាចអានឯកសារបានទេ។');
+            };
+            reader.readAsDataURL(file);
+            
+            // Clear the file input to allow selecting the same file again
+            event.target.value = null;
+        }
+
+        function showImagePreview(dataUrl) {
+            imagePreview.src = dataUrl;
+            imagePreviewContainer.style.display = 'block';
+        }
+        
+        function clearImagePreview() {
+            imagePreview.src = '';
+            imagePreviewContainer.style.display = 'none';
+            currentImageBase64 = null;
+            currentImageMimeType = null;
+        }
+
+
+        // --- GO! ---
+        initApp();
+
+    </script>
+</body>
+</html>
